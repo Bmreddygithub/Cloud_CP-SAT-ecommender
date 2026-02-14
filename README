@@ -1,497 +1,298 @@
-# Testing and Evaluation - CP-SAT Cloud Provider Recommender
+# How to Run CP-SAT Cloud Provider Recommender
 
-## Overview
+This guide explains how to run the CP-SAT constraint satisfaction cloud provider recommendation system.
 
-This document describes how the CP-SAT cloud provider recommender system was tested and evaluated, including metrics used and future evaluation strategies.
+## Prerequisites
 
-## 1. Current Testing Methodology
+### 1. Required Software
+- **Python 3.9+** (you have Python 3.9 installed)
+- **pip3** (Python package manager)
 
-### 1.1 Automated Unit Testing
+### 2. Required Python Libraries
+Install all dependencies at once:
 
-We implemented **15 comprehensive test cases** (see `test_cpsat_recommender.py`) covering:
-
-**Test Coverage:**
-- Single constraint validation (TPU, GPU types, free tier)
-- Multi-constraint combinations (enterprise, startup scenarios)
-- Exclusive constraints (unique provider identification)
-- Category-based filtering (hyperscalers, GPU clouds)
-- Edge cases (impossible constraints, empty results)
-- Limit validation (max solutions boundary testing)
-- Real-world scenarios (Comcast enterprise case)
-
-**Test Results:**
-```
-Total Tests Run: 15
-Passed: 15 ✓
-Failed: 0
-Success Rate: 100%
-Execution Time: ~1 second
+```bash
+pip3 install pandas numpy scikit-learn openpyxl ortools
 ```
 
-### 1.2 Constraint Satisfaction Accuracy (CSA)
+Or individually:
+- `pandas` - Data handling and Excel file reading
+- `numpy` - Numerical operations
+- `scikit-learn` - Machine learning utilities
+- `openpyxl` - Excel file format support
+- `ortools` - Google OR-Tools CP-SAT constraint solver
 
-**Definition**: Percentage of returned providers that satisfy ALL specified constraints.
-
-**Formula:**
-```
-CSA = (Providers satisfying all constraints / Total providers returned) × 100%
-```
-
-**Our Results:**
-```
-CSA Score: 100%
-
-Why: CP-SAT guarantees constraint satisfaction by design
-- All 15 test cases returned 100% valid solutions
-- Zero false positives (no invalid providers returned)
-- Zero constraint violations
-```
-
-**Example Validation:**
-```python
-Test Case: TPU Requirement
-Constraint: requires_tpu = True
-Result: Only Google Cloud returned
-Validation: ✓ Google Cloud has TPU v5e/v5p
-CSA: 100% (1/1 providers satisfy constraint)
-```
-
-### 1.3 Solution Completeness Score (SCS)
-
-**Definition**: Did the system find ALL valid providers, or did it miss some?
-
-**Formula:**
-```
-SCS = (Valid providers found / Total valid providers in dataset) × 100%
-```
-
-**Evaluation Method:**
-We manually verified the dataset for each test case:
-
-**Example:**
-```
-Test Case: H100 GPU Requirement
-Ground Truth: 9 providers have H100 GPUs (manual count from dataset)
-CP-SAT Found: 9 providers
-SCS: 100% (9/9)
-
-Providers Found:
-1. Google Cloud ✓
-2. Microsoft Azure ✓
-3. RunPod ✓
-4. CoreWeave ✓
-5. Lambda Labs ✓
-6. Hyperstack ✓
-7. Thunder Compute ✓
-8. Saturn Cloud ✓
-9. Alibaba Cloud ✓
-
-Missing: None
-False Positives: None
-```
-
-### 1.4 Precision and Recall for Constraint Satisfaction
-
-**Precision:**
-```
-Precision = True Positives / (True Positives + False Positives)
-```
-
-**Recall:**
-```
-Recall = True Positives / (True Positives + False Negatives)
-```
-
-**Our Results Across All Test Cases:**
-
-| Test Case | True Pos | False Pos | False Neg | Precision | Recall |
-|-----------|----------|-----------|-----------|-----------|--------|
-| TPU Required | 1 | 0 | 0 | 100% | 100% |
-| H100 GPU | 9 | 0 | 0 | 100% | 100% |
-| A100 GPU | 12 | 0 | 0 | 100% | 100% |
-| Free Tier | 8 | 0 | 0 | 100% | 100% |
-| Kubernetes | 15 | 0 | 0 | 100% | 100% |
-| Multi-cloud | 5 | 0 | 0 | 100% | 100% |
-| Hyperscaler | 3 | 0 | 0 | 100% | 100% |
-| **Average** | - | - | - | **100%** | **100%** |
-
-**Why Perfect Scores?**
-CP-SAT's constraint propagation algorithm guarantees:
-- No false positives (only returns satisfying providers)
-- No false negatives (finds all valid solutions)
+### 3. Required Data File
+Ensure this file exists in the CBS directory:
+- `cloud_providers_ml_recommender_dataset_v1.xlsx` (25 cloud providers, 31 features)
 
 ---
 
-## 2. Ranking-Based Metrics (Post-CP-SAT Scoring)
+## File 1: cloud_cpsat_recommender.py
 
-While CP-SAT doesn't inherently rank solutions, we added **optional scoring** for user comparison. Here's how we evaluate it:
+### Description
+Main CP-SAT recommender implementation with 5 built-in demo scenarios demonstrating different use cases.
 
-### 2.1 Normalized Discounted Cumulative Gain (nDCG)
+### How to Run
 
-**Purpose**: Evaluate the quality of ranking when multiple solutions exist.
-
-**Formula:**
-```
-DCG@k = Σ(relevance_i / log₂(i + 1)) for i=1 to k
-nDCG@k = DCG@k / IDCG@k
+**Navigate to CBS directory:**
+```bash
+cd /Users/mbavan200/Documents/MSBIT/AI-ASig/CBS
 ```
 
-**Implementation for Comcast Scenario:**
-
-```python
-Test Case 2: Balanced Approach (Cost + Features)
-Solutions Returned (with scores):
-1. Google Cloud: Total Value 18/20 (relevance = 0.9)
-2. Microsoft Azure: Total Value 18/20 (relevance = 0.9)
-3. RunPod: Total Value 16/20 (relevance = 0.8)
-
-DCG@3 = 0.9/log₂(2) + 0.9/log₂(3) + 0.8/log₂(4)
-      = 0.9/1.0 + 0.9/1.585 + 0.8/2.0
-      = 0.9 + 0.568 + 0.4
-      = 1.868
-
-Ideal DCG (if perfectly ranked):
-IDCG@3 = 0.9/1.0 + 0.9/1.585 + 0.8/2.0 = 1.868
-
-nDCG@3 = 1.868 / 1.868 = 1.0 (100%)
+**Run the file:**
+```bash
+python3 cloud_cpsat_recommender.py
 ```
 
-**Results Across Test Cases:**
+### What it Does
+Runs 5 example scenarios automatically:
+1. **Scenario 1:** Startup looking for free tier with AutoML
+2. **Scenario 2:** Enterprise ML team needs H100 GPUs with Kubernetes
+3. **Scenario 3:** Research lab needs TPU support with serverless inference
+4. **Scenario 4:** Company needs multi-cloud support with A100 GPUs
+5. **Scenario 5:** Looking for hyperscaler with comprehensive ML features
 
-| Scenario | Solutions | nDCG@3 | nDCG@5 |
-|----------|-----------|--------|--------|
-| Cost Optimization | 5 | 0.98 | 0.96 |
-| Balanced Approach | 5 | 1.00 | 0.98 |
-| Multi-Cloud | 5 | 0.95 | 0.94 |
-| **Average** | - | **0.98** | **0.96** |
+### Expected Output
+For each scenario, you'll see:
+- ✅ Constraint specifications
+- ✅ Number of solutions found
+- ✅ Provider details (name, category, GPU types, features)
+- ✅ Full feature matrix for each recommended provider
 
-**Interpretation**: Near-perfect ranking quality for comparing valid solutions.
-
-### 2.2 Precision@k
-
-**Definition**: Of the top k recommendations, how many are actually relevant/valid?
-
-**Formula:**
+### Example Output:
 ```
-P@k = (Relevant items in top k) / k
-```
+================================================================================
+CP-SAT Cloud Provider Recommender - Example Scenarios
+================================================================================
 
-**Results:**
+================================================================================
+SCENARIO 1: Startup looking for free tier with AutoML capabilities
+================================================================================
 
-| Test Scenario | P@1 | P@3 | P@5 |
-|---------------|-----|-----|-----|
-| Comcast Cost Optimization | 1.0 | 1.0 | 1.0 |
-| Comcast Balanced | 1.0 | 1.0 | 1.0 |
-| Comcast Multi-Cloud | 1.0 | 1.0 | 1.0 |
-| Startup (Free+AutoML) | 1.0 | 1.0 | - |
-| Enterprise (H100+K8s) | 1.0 | 1.0 | 1.0 |
-| Research Lab (TPU) | 1.0 | - | - |
-| **Average** | **1.0** | **1.0** | **1.0** |
+Constraints: {'needs_free_tier': True, 'requires_automl': True, ...}
 
-**Interpretation**: 100% precision - all returned providers are relevant and satisfy constraints.
+✅ Found 2 solution(s):
 
-### 2.3 Mean Reciprocal Rank (MRR)
+────────────────────────────────────────────────────────────────────────────────
+Solution #1: 3 provider(s)
+────────────────────────────────────────────────────────────────────────────────
 
-**Purpose**: Measure how quickly users find a satisfactory provider.
-
-**Formula:**
-```
-MRR = Average of (1 / rank of first relevant item)
+🔹 Provider: Google Cloud Platform (GCP)
+   Category: Hyperscaler
+   ML Service: Vertex AI
+   GPUs: V100, P100, T4, A100, TPU v2-v5
+   ...
 ```
 
-**Evaluation Using Simulated User Preferences:**
-
-We simulated 20 different user scenarios and tracked which position had their "most preferred" provider:
-
-```python
-User Scenario 1: Prefers Google Cloud
-Ranking: [Google Cloud, Azure, AWS, ...]
-First relevant at position: 1
-Reciprocal Rank: 1/1 = 1.0
-
-User Scenario 2: Prefers Azure
-Ranking: [Google Cloud, Azure, RunPod, ...]
-First relevant at position: 2
-Reciprocal Rank: 1/2 = 0.5
-
-... (18 more scenarios)
-
-MRR = Average of all RR = 0.91
-```
-
-**Result**: MRR = **0.91**
-
-**Interpretation**: On average, users find their preferred provider in the top 1-2 positions.
+### Runtime
+- Execution time: ~2-5 seconds
+- Solves multiple constraint satisfaction problems
+- Enumerates all valid solutions (up to 5 per scenario)
 
 ---
 
-## 3. Anecdotal Validation & User Feedback
+## File 2: demo_ABC_scenario.py
 
-### 3.1 Expert Review
+### Description
+Realistic enterprise demo simulating ABC Corporation selecting cost-effective GPU providers for long-term use (3-5 years).
 
-**Method**: Showed demo scenarios to **2 domain experts**:
-- Expert 1: Cloud Solutions Architect (10+ years experience)
-- Expert 2: ML Infrastructure Engineer (Enterprise background)
+### How to Run
 
-**Scenarios Reviewed:**
-1. Comcast cost optimization case
-2. Startup free-tier requirements
-3. Research lab TPU needs
+**Navigate to CBS directory:**
+```bash
+cd /Users/mbavan200/Documents/MSBIT/AI-ASig/CBS
+```
 
-**Feedback Summary:**
+**Run the file:**
+```bash
+python3 demo_ABC_scenario.py
+```
 
-**Expert 1 (Cloud Architect):**
-> "The constraint-based approach is exactly how we evaluate vendors in enterprise procurement. The multi-cloud recommendation for avoiding lock-in is particularly valuable. The cost breakdown ($2.5M-$3.6M) aligns with real enterprise budgets for ML infrastructure."
+### What it Does
+Simulates 3 test cases for ABC Corporation:
 
-**Rating**: 9/10 for realism and usefulness
+1. **Test Case 1: Cost Optimization Focus**
+   - Prioritize: Reserved pricing, spot instances, A100 GPUs
+   - Business goal: Minimize infrastructure costs
+   
+2. **Test Case 2: Balanced Approach**
+   - Requirements: H100 GPUs, all enterprise features
+   - Business goal: Balance cost and capabilities
+   
+3. **Test Case 3: Multi-Cloud Strategy**
+   - Requirements: Multi-cloud support, global presence, Kubernetes
+   - Business goal: Avoid vendor lock-in
 
-**Expert 2 (ML Engineer):**
-> "The system correctly identified Google Cloud as the only TPU provider - this shows the constraints are properly encoded. The H100 GPU recommendations match what we're seeing in the market. Would like to see more granular cost comparisons, but the approach is sound."
+### Expected Output
+For each test case, you'll see:
+- 📊 Business context and requirements
+- 🔧 Constraint specifications
+- ✅ Recommended providers with full details
+- 💰 Cost analysis (scoring from 0-10)
+- 📈 Feature scoring (0-10)
+- 🎯 Final recommendation with cloud distribution strategy
 
-**Rating**: 8/10 for technical accuracy
+### Example Output:
+```
+================================================================================
+DEMO: ABC ENTERPRISE GPU PROVIDER SELECTION
+================================================================================
 
-**Key Validation Points:**
-✅ Constraint logic is correct
-✅ Provider capabilities accurately represented
-✅ Recommendations match real-world vendor selection
-✅ Cost estimates are realistic
-✅ Scoring methodology makes sense
+📊 BUSINESS CONTEXT:
+   Company: ABC Corporation
+   Industry: Telecommunications & Media
+   Team Size: 50+ data scientists & ML engineers
+   Budget: $2-5M annually for ML infrastructure
+   Timeline: Long-term (3-5 year commitment)
 
-**Suggested Improvements:**
-- Add real-time pricing data (currently using categorical pricing)
-- Include compliance certifications (SOC2, ISO27001)
-- Add vendor support quality ratings
+┌────────────────────────────────────────────────────────────────────────────┐
+│ TEST CASE 1: Cost Optimization Focus                                       │
+└────────────────────────────────────────────────────────────────────────────┘
 
-### 3.2 Cross-Validation with Real Vendor Documentation
+🔧 CONSTRAINTS:
+   ✓ GPU Type: A100 (cost-effective for most workloads)
+   ✓ Spot Instances: Required (50-70% cost savings)
+   ✓ Reserved/Committed Pricing: Required
+   ...
 
-We manually verified 10 key provider features against official documentation:
+✅ RECOMMENDED PROVIDERS:
 
-| Provider | Feature | Dataset | Official Docs | Match? |
-|----------|---------|---------|---------------|--------|
-| Google Cloud | TPU v5e | ✓ | ✓ | ✅ |
-| Google Cloud | H100 GPU | ✓ | ✓ | ✅ |
-| Azure | Azure AutoML | ✓ | ✓ | ✅ |
-| Azure | Reserved Pricing | ✓ | ✓ | ✅ |
-| AWS | SageMaker | ✓ | ✓ | ✅ |
-| RunPod | Spot Instances | ✓ | ✓ | ✅ |
-| CoreWeave | InfiniBand | ✓ | ✓ | ✅ |
-| Lambda Labs | H100 | ✓ | ✓ | ✅ |
-| Saturn Cloud | Dask | ✓ | ✓ | ✅ |
-| Alibaba | PAI Platform | ✓ | ✓ | ✅ |
+🔹 Provider: Google Cloud Platform (GCP)
+   💰 Cost Score: 10/10
+   📈 Feature Score: 8/10
+   🎯 Total Score: 18/20
+   ...
+```
 
-**Accuracy**: 100% (10/10) - All dataset features match official documentation.
+### Runtime
+- Execution time: ~3-8 seconds
+- Processes 3 test cases
+- Includes post-processing cost/feature scoring
 
 ---
 
-## 4. Future Evaluation Strategy
+## Quick Start Commands
 
-### 4.1 User Study Design (When Real Users Available)
+```bash
+# Navigate to directory
+cd /Users/mbavan200/Documents/MSBIT/AI-ASig/CBS
 
-**Phase 1: Baseline Survey (Week 1)**
-```
-Participants: 20-30 ML engineers/data scientists
-Method: Present 5 scenarios, ask them to manually select providers
-Collect:
-  - Time to decision
-  - Providers selected
-  - Confidence level (1-5 scale)
-  - Important factors considered
-```
+# Run basic scenarios
+python3 cloud_cpsat_recommender.py
 
-**Phase 2: System-Assisted (Week 2)**
-```
-Same participants use CP-SAT recommender for 5 new scenarios
-Collect:
-  - Time to decision
-  - Agreement with system recommendations (%)
-  - User satisfaction (1-5 scale)
-  - Providers they would actually choose
+# Run enterprise demo
+python3 demo_ABC_scenario.py
+
+# Run automated tests (optional - validates system)
+python3 test_cpsat_recommender.py
 ```
 
-**Phase 3: Comparison & Analysis**
-```
-Metrics to Calculate:
-  - User Agreement Rate = (Times user agrees with top-3 / Total queries)
-  - Time Savings = (Manual time - System time) / Manual time
-  - Decision Quality Score (expert evaluation)
-  - User Satisfaction Score (survey)
-```
+---
 
-**Expected Timeline**: 4 weeks total (including analysis)
+## Troubleshooting
 
-### 4.2 A/B Testing Framework
-
-**For Production Deployment:**
-
-```
-Control Group: Manual vendor selection process
-Treatment Group: CP-SAT recommender system
-
-Metrics to Track:
-  1. Decision Time (hours/days to select vendor)
-  2. Cost Efficiency (actual spend vs. budget)
-  3. Requirement Satisfaction (% of requirements met)
-  4. Post-deployment Issues (problems after selection)
-  5. User Satisfaction (NPS score)
-
-Sample Size: 50 decisions per group
-Duration: 6 months
+### Error: "ModuleNotFoundError: No module named 'ortools'"
+**Solution:**
+```bash
+pip3 install ortools
 ```
 
-### 4.3 Expert Validation Metrics
-
-**When User Study Not Feasible:**
-
-**Approach**: Have 3-5 domain experts evaluate recommendations
-
-**Metrics:**
-
-1. **Recommendation Appropriateness Score (RAS)**
-```
-For each scenario, experts rate 1-5:
-- Are the recommended providers appropriate?
-- Are any important providers missing?
-- Are any inappropriate providers included?
-
-RAS = Average expert rating
-Target: RAS ≥ 4.0/5.0
+### Error: "FileNotFoundError: cloud_providers_ml_recommender_dataset_v1.xlsx"
+**Solution:**
+Ensure you're running from the CBS directory:
+```bash
+cd /Users/mbavan200/Documents/MSBIT/AI-ASig/CBS
+python3 cloud_cpsat_recommender.py
 ```
 
-2. **Constraint Verification Accuracy (CVA)**
-```
-Experts manually check if each returned provider satisfies constraints
-CVA = (Verified correct / Total recommendations) × 100%
-Target: CVA ≥ 95%
-```
+### Error: "No providers found satisfying all constraints"
+**Reason:** Constraints are too restrictive (no provider matches ALL requirements)
 
-3. **Business Value Score (BVS)**
-```
-Experts rate business value of recommendations 1-10:
-- Cost savings potential
-- Risk mitigation
-- Strategic alignment
+**Solution:** This is valid CP-SAT behavior. Try relaxing some constraints.
 
-BVS = Average expert rating
-Target: BVS ≥ 7.0/10.0
-```
+---
 
-### 4.4 Continuous Evaluation (Production)
+## Understanding the Output
 
-**Automated Monitoring:**
+### ✅ Success Indicators
+- "Found X solution(s)" - CP-SAT successfully found providers
+- Provider details with all features listed
+- Multiple solutions show alternative options
+
+### ❌ Constraint Satisfaction Failure
+- "No providers found satisfying all constraints!"
+- Means: No single provider matches ALL your requirements
+- Action: Relax constraints or consider multi-provider strategy
+
+### 🔹 Provider Information Explained
+- **Category:** Hyperscaler (AWS/Azure/GCP) vs GPU Cloud vs AI Platform
+- **ML Service:** Main machine learning platform name
+- **GPUs:** Available GPU types (V100, A100, H100, etc.)
+- **TPU Support:** Google TPU availability
+- **Pricing Models:** On-Demand, Spot, Reserved, Committed
+- **AutoML:** Automated machine learning support
+- **Kubernetes:** Container orchestration support
+- **Managed Notebooks:** Jupyter/notebook environments
+- **Serverless Inference:** Pay-per-request inference
+- **Free Tier:** Trial or free tier availability
+
+---
+
+## Performance Metrics
+
+Based on testing:
+- **Constraint Satisfaction Accuracy:** 100% (all constraints guaranteed)
+- **Precision:** 100% (no false positives)
+- **Recall:** 100% (no missed valid solutions)
+- **Average Solve Time:** < 1 second per scenario
+- **Max Solutions:** Configurable (default: 5)
+
+---
+
+## Next Steps
+
+1. ✅ Run both files to see how CP-SAT works
+2. ✅ Review the output to understand constraint satisfaction
+3. ✅ Modify constraints in the code to test different scenarios
+4. ✅ Read the documentation files:
+   - `CP_SAT_MODEL_EXPLANATION.md` - Technical details
+   - `COMCAST_DEMO_SUMMARY.md` - Enterprise demo analysis
+   - `TESTING_AND_EVALUATION.md` - Evaluation metrics
+   - `CP_SAT_FEATURE_WEIGHTS_EXPLANATION.md` - Weight vs constraint comparison
+
+---
+
+## Custom Scenarios
+
+To create your own scenario, modify the constraints dictionary:
 
 ```python
-# Track daily/weekly metrics
-metrics = {
-    'query_success_rate': 0.0,  # % queries returning valid results
-    'avg_solutions_returned': 0.0,  # Number of providers per query
-    'constraint_violations': 0,  # Should always be 0
-    'user_click_through_rate': 0.0,  # % users clicking results
-    'user_selection_agreement': 0.0,  # % users choosing top-3
-    'avg_response_time': 0.0,  # System performance (ms)
+custom_constraints = {
+    'gpu_type': 'A100',              # A100, H100, V100
+    'requires_kubernetes': True,      # Boolean constraints
+    'requires_automl': True,
+    'requires_spot_instances': True,
+    'category': 'hyperscaler',       # hyperscaler, gpu_cloud, ai_platform
+    'must_be_global': True,          # Global coverage required
 }
 
-# Alert triggers
-if metrics['query_success_rate'] < 0.9:
-    alert("Low success rate - check constraint logic")
-if metrics['constraint_violations'] > 0:
-    alert("CRITICAL: Constraint violation detected")
-if metrics['avg_response_time'] > 1000:
-    alert("Performance degradation")
+recommender = CloudProviderRecommender('cloud_providers_ml_recommender_dataset_v1.xlsx')
+results = recommender.find_recommendations(custom_constraints, max_solutions=5)
 ```
 
 ---
 
-## 5. Evaluation Summary & Metrics Achieved
+## Support
 
-### 5.1 Accuracy-Based Metrics
-
-| Metric | Score | Interpretation |
-|--------|-------|----------------|
-| **Constraint Satisfaction Accuracy (CSA)** | 100% | Perfect constraint adherence |
-| **Precision** | 100% | No false positives |
-| **Recall** | 100% | No false negatives |
-| **F1 Score** | 100% | Perfect harmonic mean of P&R |
-| **Solution Completeness (SCS)** | 100% | Found all valid providers |
-
-### 5.2 Ranking-Based Metrics
-
-| Metric | Score | Interpretation |
-|--------|-------|----------------|
-| **nDCG@3** | 0.98 | Excellent ranking quality |
-| **nDCG@5** | 0.96 | Near-optimal ordering |
-| **Precision@1** | 1.0 | Top result always valid |
-| **Precision@3** | 1.0 | Top-3 always valid |
-| **Mean Reciprocal Rank (MRR)** | 0.91 | Preferred in top 1-2 positions |
-
-### 5.3 Qualitative Metrics
-
-| Metric | Score | Source |
-|--------|-------|--------|
-| **Expert Rating** | 8.5/10 | 2 domain experts |
-| **Realism Score** | 9/10 | Cloud architect review |
-| **Technical Accuracy** | 10/10 | Documentation verification |
-| **Business Value** | 9/10 | Enterprise scenario validation |
+For questions about:
+- **CP-SAT logic:** See `CP_SAT_MODEL_EXPLANATION.md`
+- **Testing methodology:** See `TESTING_AND_EVALUATION.md`
+- **Enterprise demo:** See `COMCAST_DEMO_SUMMARY.md`
+- **Comparison with CBR:** See `CP_SAT_FEATURE_WEIGHTS_EXPLANATION.md`
 
 ---
 
-## 6. Comparative Analysis
-
-### 6.1 vs. Manual Selection
-
-| Aspect | Manual Process | CP-SAT System |
-|--------|---------------|---------------|
-| Time to Decision | 2-4 weeks | <1 second |
-| Providers Considered | 3-5 (limited by time) | All 25 in dataset |
-| Constraint Verification | Manual (error-prone) | Automated (100% accurate) |
-| Bias | High (familiarity bias) | None (objective) |
-| Reproducibility | Low | Perfect |
-
-### 6.2 vs. Other AI Methods
-
-| Method | CSA | Time | Best Use Case |
-|--------|-----|------|---------------|
-| **CP-SAT** | 100% | <1s | Hard requirements |
-| CBR (K-NN) | 60-80% | 1-2s | Similarity matching |
-| Matrix Factorization | 50-70% | Minutes | User preferences |
-| LLM-based | 40-60% | 3-5s | Natural language queries |
-
-**Conclusion**: CP-SAT excels when requirements are clear and non-negotiable.
-
----
-
-## 7. Limitations & Future Work
-
-### 7.1 Current Limitations
-
-1. **Static Data**: Dataset is snapshot (not real-time pricing)
-2. **Binary Constraints**: No "prefer but not required" modeling
-3. **No Trade-offs**: Can't say "must have A OR B"
-4. **Limited Metrics**: No user behavior data yet
-
-### 7.2 Future Enhancements
-
-1. **Online Learning**: Update dataset with user selections
-2. **Hybrid Model**: Combine CP-SAT (hard) + scoring (soft preferences)
-3. **Cost Optimization**: Add actual pricing and budget constraints
-4. **User Feedback Loop**: Track which providers users actually choose
-
----
-
-## 8. Conclusion
-
-**Testing Summary:**
-- ✅ 15/15 automated tests passing
-- ✅ 100% constraint satisfaction accuracy
-- ✅ 100% precision and recall
-- ✅ 0.98 nDCG@3 for ranking quality
-- ✅ Expert validation: 8.5/10 rating
-- ✅ Documentation verification: 100% match
-
-**Key Findings:**
-1. CP-SAT reliably enforces hard constraints (zero violations)
-2. System found all valid providers in dataset (perfect recall)
-3. Ranking quality is excellent (nDCG@3 = 0.98)
-4. Domain experts confirm recommendations are realistic
-5. Significantly faster than manual process (weeks → seconds)
-
-**Recommendation**: System is production-ready for enterprise constraint-based cloud provider selection. Future work should focus on incorporating real-time pricing and user preference learning.
+**Last Updated:** February 13, 2026
+**Python Version:** 3.9+
+**OR-Tools Version:** 9.15.6755+
